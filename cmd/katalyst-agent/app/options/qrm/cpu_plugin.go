@@ -57,7 +57,8 @@ type CPUDynamicPolicyOptions struct {
 	EnableDefaultSharedCoresCPUBurst                   bool
 	EnableCPUBurstForMainContainerOnly                 bool
 	IRQForbiddenPinnedResourcePackageAttributeSelector string
-	EnableCPUWeight                     			   bool
+	EnableCPUWeight                                    bool
+	EnableSystemExclusivePool                          bool
 	*irqtuner.IRQTunerOptions
 	*hintoptimizer.HintOptimizerOptions
 }
@@ -91,6 +92,7 @@ func NewCPUOptions() *CPUOptions {
 			NUMAIDsAnnotationKey:           consts.PodAnnotationCPUEnhancementNumaIDs,
 			HintOptimizerOptions:           hintoptimizer.NewHintOptimizerOptions(),
 			IRQTunerOptions:                irqtuner.NewIRQTunerOptions(),
+			EnableSystemExclusivePool:      false,
 		},
 		CPUNativePolicyOptions: CPUNativePolicyOptions{
 			EnableFullPhysicalCPUsOnly: false,
@@ -152,6 +154,8 @@ func (o *CPUOptions) AddFlags(fss *cliflag.NamedFlagSets) {
 			"forbidden for irq binding.")
 	fs.BoolVar(&o.EnableCPUWeight, "enable-cpu-weight", o.EnableCPUWeight,
 		"This is a flag that enables the cpu weight handler to sync periodically.")
+	fs.BoolVar(&o.EnableSystemExclusivePool, "enable-system-exclusive-pool",
+		o.EnableSystemExclusivePool, "if set true, it will enable exclusive cpu binding for pool of system cores")
 	o.HintOptimizerOptions.AddFlags(fss)
 	o.IRQTunerOptions.AddFlags(fss)
 }
@@ -183,6 +187,7 @@ func (o *CPUOptions) ApplyTo(conf *qrmconfig.CPUQRMPluginConfig) error {
 	}
 	conf.IRQForbiddenPinnedResourcePackageAttributeSelector = selector
 	conf.EnableCPUWeight = o.EnableCPUWeight
+	conf.EnableSystemExclusivePool = o.EnableSystemExclusivePool
 	if err := o.HintOptimizerOptions.ApplyTo(conf.HintOptimizerConfiguration); err != nil {
 		return err
 	}

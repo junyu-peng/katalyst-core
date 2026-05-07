@@ -78,6 +78,8 @@ type CPUDynamicPolicyConfig struct {
 	IRQForbiddenPinnedResourcePackageAttributeSelector labels.Selector
 	// EnableCPUWeight indicates whether cpu weight sync is enabled
 	EnableCPUWeight bool
+	// EnableSystemExclusivePool indicates whether to enable exclusive cpu binding for pool of system cores
+	EnableSystemExclusivePool bool
 
 	*hintoptimizer.HintOptimizerConfiguration
 	*irqtuner.IRQTunerConfiguration
