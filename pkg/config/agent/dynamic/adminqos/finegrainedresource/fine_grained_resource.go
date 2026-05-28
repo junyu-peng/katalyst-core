@@ -20,14 +20,17 @@ import "github.com/kubewharf/katalyst-core/pkg/config/agent/dynamic/crd"
 
 type FineGrainedResourceConfiguration struct {
 	*CPUBurstConfiguration
+	*DynamicCPUWeightConfiguration
 }
 
 func NewFineGrainedResourceConfiguration() *FineGrainedResourceConfiguration {
 	return &FineGrainedResourceConfiguration{
-		CPUBurstConfiguration: NewCPUBurstConfiguration(),
+		CPUBurstConfiguration:           NewCPUBurstConfiguration(),
+		DynamicCPUWeightConfiguration:   NewDynamicCPUWeightConfiguration(),
 	}
 }
 
 func (c *FineGrainedResourceConfiguration) ApplyConfiguration(conf *crd.DynamicConfigCRD) {
 	c.CPUBurstConfiguration.ApplyConfiguration(conf)
+	c.DynamicCPUWeightConfiguration.ApplyConfiguration(conf)
 }

@@ -36,6 +36,7 @@ import (
 	"github.com/kubewharf/katalyst-api/pkg/plugins/skeleton"
 	"github.com/kubewharf/katalyst-core/cmd/katalyst-agent/app/agent"
 	"github.com/kubewharf/katalyst-core/cmd/katalyst-agent/app/agent/qrm"
+	"github.com/kubewharf/katalyst-core/pkg/agent/dynamiccpuweight"
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/accompanyresource"
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/advisorsvc"
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/commonstate"
@@ -114,6 +115,8 @@ type DynamicPolicy struct {
 	cpuPressureEviction       agent.Component
 	cpuPressureEvictionCancel context.CancelFunc
 
+	dynamicCPUWeightPluginCancel context.CancelFunc
+
 	irqTuner irqtuner.Tuner
 
 	// those are parsed from configurations
@@ -148,6 +151,8 @@ type DynamicPolicy struct {
 
 	sharedCoresNUMABindingHintOptimizer    hintoptimizer.HintOptimizer
 	dedicatedCoresNUMABindingHintOptimizer hintoptimizer.HintOptimizer
+
+	dynamicCPUWeightPlugin *dynamiccpuweight.DynamicCPUWeightPlugin
 }
 
 func NewDynamicPolicy(agentCtx *agent.GenericContext, conf *config.Configuration,
@@ -297,6 +302,11 @@ func NewDynamicPolicy(agentCtx *agent.GenericContext, conf *config.Configuration
 		return false, nil, err
 	}
 
+	if conf.CPUQRMPluginConfig.DynamicCPUWeightInterval > 0 {
+		policyImplement.dynamicCPUWeightPlugin = dynamiccpuweight.NewDynamicCPUWeightPlugin(
+			agentCtx.MetaServer, conf.DynamicAgentConfiguration, wrappedEmitter, conf.CPUQRMPluginConfig.DynamicCPUWeightInterval)
+	}
+
 	pluginWrapper, err := skeleton.NewRegistrationPluginWrapper(policyImplement, conf.QRMPluginSocketDirs, func(key string, value int64) {
 		_ = wrappedEmitter.StoreInt64(key, value, metrics.MetricTypeNameRaw)
 	})
@@ -388,6 +398,12 @@ func (p *DynamicPolicy) Start() (err error) {
 		var ctx context.Context
 		ctx, p.cpuPressureEvictionCancel = context.WithCancel(context.Background())
 		go p.cpuPressureEviction.Run(ctx)
+	}
+
+	if p.dynamicCPUWeightPlugin != nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		p.dynamicCPUWeightPluginCancel = cancel
+		go p.dynamicCPUWeightPlugin.Run(ctx)
 	}
 
 	go wait.Until(func() {
@@ -491,6 +507,10 @@ func (p *DynamicPolicy) Stop() error {
 
 	if p.cpuPressureEvictionCancel != nil {
 		p.cpuPressureEvictionCancel()
+	}
+
+	if p.dynamicCPUWeightPluginCancel != nil {
+		p.dynamicCPUWeightPluginCancel()
 	}
 
 	periodicalhandler.StopHandlersByGroup(qrm.QRMCPUPluginPeriodicalHandlerGroupName)

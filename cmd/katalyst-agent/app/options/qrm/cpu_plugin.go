@@ -57,6 +57,8 @@ type CPUDynamicPolicyOptions struct {
 	EnableCPUBurstForMainContainerOnly  bool
 	*irqtuner.IRQTunerOptions
 	*hintoptimizer.HintOptimizerOptions
+	// DynamicCPUWeightInterval is the interval for dynamic CPU weight adjustment (0 means disabled)
+	DynamicCPUWeightInterval time.Duration
 }
 
 type CPUNativePolicyOptions struct {
@@ -143,6 +145,8 @@ func (o *CPUOptions) AddFlags(fss *cliflag.NamedFlagSets) {
 		o.EnableDefaultDedicatedCoresCPUBurst, "if set true, it will enable cpu burst for dedicated cores by default")
 	fs.BoolVar(&o.EnableCPUBurstForMainContainerOnly, "enable-cpu-burst-for-main-container-only",
 		o.EnableCPUBurstForMainContainerOnly, "if set true, it will enable cpu burst for main container only")
+	fs.DurationVar(&o.DynamicCPUWeightInterval, "dynamic-cpu-weight-interval",
+		o.DynamicCPUWeightInterval, "the interval for dynamic cpu weight adjustment (0 means disabled)")
 	o.HintOptimizerOptions.AddFlags(fss)
 	o.IRQTunerOptions.AddFlags(fss)
 }
@@ -174,5 +178,6 @@ func (o *CPUOptions) ApplyTo(conf *qrmconfig.CPUQRMPluginConfig) error {
 	if err := o.IRQTunerOptions.ApplyTo(conf.IRQTunerConfiguration); err != nil {
 		return err
 	}
+	conf.DynamicCPUWeightInterval = o.DynamicCPUWeightInterval
 	return nil
 }

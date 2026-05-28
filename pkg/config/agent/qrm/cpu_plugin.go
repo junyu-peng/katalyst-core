@@ -74,6 +74,8 @@ type CPUDynamicPolicyConfig struct {
 
 	*hintoptimizer.HintOptimizerConfiguration
 	*irqtuner.IRQTunerConfiguration
+	// DynamicCPUWeightInterval is the interval for dynamic CPU weight adjustment
+	DynamicCPUWeightInterval time.Duration
 }
 
 type CPUNativePolicyConfig struct {
