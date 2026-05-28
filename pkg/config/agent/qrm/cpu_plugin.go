@@ -76,6 +76,8 @@ type CPUDynamicPolicyConfig struct {
 	// IRQForbiddenPinnedResourcePackageAttributeSelector is the selector to filter pinned resource packages that are
 	// forbidden for irq binding.
 	IRQForbiddenPinnedResourcePackageAttributeSelector labels.Selector
+	// EnableCPUWeight indicates whether cpu weight sync is enabled
+	EnableCPUWeight bool
 
 	*hintoptimizer.HintOptimizerConfiguration
 	*irqtuner.IRQTunerConfiguration

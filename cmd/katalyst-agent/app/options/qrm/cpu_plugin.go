@@ -57,6 +57,7 @@ type CPUDynamicPolicyOptions struct {
 	EnableDefaultSharedCoresCPUBurst                   bool
 	EnableCPUBurstForMainContainerOnly                 bool
 	IRQForbiddenPinnedResourcePackageAttributeSelector string
+	EnableCPUWeight                     			   bool
 	*irqtuner.IRQTunerOptions
 	*hintoptimizer.HintOptimizerOptions
 }
@@ -78,6 +79,7 @@ func NewCPUOptions() *CPUOptions {
 			EnableSyncingCPUIdle:      false,
 			EnableCPUIdle:             false,
 			EnableCPUBurst:            false,
+			EnableCPUWeight:           false,
 			LoadPressureEvictionSkipPools: []string{
 				commonstate.PoolNameReclaim,
 				commonstate.PoolNameDedicated,
@@ -148,6 +150,8 @@ func (o *CPUOptions) AddFlags(fss *cliflag.NamedFlagSets) {
 	fs.StringVar(&o.IRQForbiddenPinnedResourcePackageAttributeSelector, "irq-forbidden-pinned-resource-package-attribute-selector",
 		o.IRQForbiddenPinnedResourcePackageAttributeSelector, "The selector to filter pinned resource packages that are"+
 			"forbidden for irq binding.")
+	fs.BoolVar(&o.EnableCPUWeight, "enable-cpu-weight", o.EnableCPUWeight,
+		"This is a flag that enables the cpu weight handler to sync periodically.")
 	o.HintOptimizerOptions.AddFlags(fss)
 	o.IRQTunerOptions.AddFlags(fss)
 }
@@ -178,6 +182,7 @@ func (o *CPUOptions) ApplyTo(conf *qrmconfig.CPUQRMPluginConfig) error {
 		return err
 	}
 	conf.IRQForbiddenPinnedResourcePackageAttributeSelector = selector
+	conf.EnableCPUWeight = o.EnableCPUWeight
 	if err := o.HintOptimizerOptions.ApplyTo(conf.HintOptimizerConfiguration); err != nil {
 		return err
 	}
