@@ -221,6 +221,33 @@ func TestClearResidualPodsInCache(t *testing.T) {
 	}
 }
 
+func TestSetPodFetcher(t *testing.T) {
+	cgroupIDManager := NewCgroupIDManager(podFetcher).(*cgroupIDManagerImpl)
+	assert.NotNil(t, cgroupIDManager)
+	defer cgroupIDManager.SetPodFetcher(podFetcher)
+
+	newPodFetcher := &pod.PodFetcherStub{}
+	cgroupIDManager.SetPodFetcher(newPodFetcher)
+
+	assert.Equal(t, newPodFetcher, cgroupIDManager.PodFetcher)
+}
+
+func TestSetPodFetcherAfterStartDoesNothing(t *testing.T) {
+	cgroupIDManager := NewCgroupIDManager(podFetcher).(*cgroupIDManagerImpl)
+	assert.NotNil(t, cgroupIDManager)
+
+	originalPodFetcher := cgroupIDManager.PodFetcher
+	cgroupIDManager.start = true
+	defer func() {
+		cgroupIDManager.start = false
+		cgroupIDManager.SetPodFetcher(originalPodFetcher)
+	}()
+
+	cgroupIDManager.SetPodFetcher(&pod.PodFetcherStub{})
+
+	assert.Equal(t, originalPodFetcher, cgroupIDManager.PodFetcher)
+}
+
 func makePodFetcher(podList []*v1.Pod) pod.PodFetcher {
 	podFetcher := pod.PodFetcherStub{}
 	if len(podList) > 0 {
