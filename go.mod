@@ -1,6 +1,6 @@
 module github.com/kubewharf/katalyst-core
 
-go 1.18
+go 1.25
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.13.0
