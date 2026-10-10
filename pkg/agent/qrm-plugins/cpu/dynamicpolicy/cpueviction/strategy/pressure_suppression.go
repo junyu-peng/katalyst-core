@@ -47,6 +47,7 @@ import (
 	"github.com/kubewharf/katalyst-core/pkg/util/qos"
 )
 
+// EvictionNameSuppression is the name of the cpu pressure suppression eviction plugin.
 const EvictionNameSuppression = "cpu-pressure-suppression-plugin"
 
 const (
@@ -66,6 +67,9 @@ const (
 	evictionScopeSuppressionUsage = "cpu"
 )
 
+// CPUPressureSuppression is the eviction plugin that periodically evaluates
+// the suppression rate and the actual CPU usage of each reclaim pool group,
+// and evicts reclaimed pods from over-threshold groups.
 type CPUPressureSuppression struct {
 	sync.RWMutex
 	conf                                         *config.Configuration
@@ -78,8 +82,8 @@ type CPUPressureSuppression struct {
 
 	// suppression usage eviction channel (independent from the GetEvictPods path)
 	suppressionUsageCPUPressureEvictionConfig *SuppressionUsageCPUPressureEvictionConfig
-	metricsHistory            *cpuutil.NumaMetricHistory
-	suppressionOverStats      []SuppressionOverStat
+	metricsHistory                            *cpuutil.NumaMetricHistory
+	suppressionOverStats                      []SuppressionOverStat
 }
 
 // SuppressionOverStat is the per-group suppression usage stat maintained by sync.
@@ -91,6 +95,7 @@ type SuppressionOverStat struct {
 	IsHardOver    bool
 }
 
+// NewCPUPressureSuppressionEviction creates a CPUPressureSuppression plugin.
 func NewCPUPressureSuppressionEviction(emitter metrics.MetricEmitter, metaServer *metaserver.MetaServer,
 	conf *config.Configuration, state state.ReadonlyState,
 ) (CPUPressureEviction, error) {
@@ -103,19 +108,30 @@ func NewCPUPressureSuppressionEviction(emitter metrics.MetricEmitter, metaServer
 		nonNUMABindingReclaimRelativeRootCgroupPaths: common.GetNUMABindingReclaimRelativeRootCgroupPaths(conf.ReclaimRelativeRootCgroupPath,
 			metaServer.CPUDetails.NUMANodes().ToSliceNoSortInt()),
 		suppressionUsageCPUPressureEvictionConfig: evictionConfig,
-		metricsHistory:            cpuutil.NewMetricHistory(evictionConfig.MetricRingSize),
-		suppressionOverStats:      make([]SuppressionOverStat, 0),
+		metricsHistory:       cpuutil.NewMetricHistory(evictionConfig.MetricRingSize),
+		suppressionOverStats: make([]SuppressionOverStat, 0),
 	}, nil
 }
 
+// Start starts the periodic sync loop of the plugin. It fails fast when the
+// configured sync period is non-positive, so that a misconfigured dynamic
+// config cannot silently starve the sync loop.
 func (p *CPUPressureSuppression) Start(ctx context.Context) error {
 	general.Infof("%s start", EvictionNameSuppression)
-	go wait.UntilWithContext(ctx, p.sync, time.Duration(p.suppressionUsageCPUPressureEvictionConfig.SyncPeriod)*time.Second)
+	period := time.Duration(p.suppressionUsageCPUPressureEvictionConfig.SyncPeriod) * time.Second
+	if period <= 0 {
+		return fmt.Errorf("%s: invalid sync period %d seconds, must be positive",
+			EvictionNameSuppression, p.suppressionUsageCPUPressureEvictionConfig.SyncPeriod)
+	}
+	go wait.UntilWithContext(ctx, p.sync, period)
 	return nil
 }
 
+// Name returns the name of the plugin.
 func (p *CPUPressureSuppression) Name() string { return EvictionNameSuppression }
 
+// ThresholdMet reports whether the most severe reclaim pool group has
+// sustained over its soft or hard suppression usage thresholds.
 func (p *CPUPressureSuppression) ThresholdMet(_ context.Context, _ *pluginapi.GetThresholdMetRequest) (*pluginapi.ThresholdMetResponse, error) {
 	p.RLock()
 	defer p.RUnlock()
@@ -166,6 +182,9 @@ func (p *CPUPressureSuppression) ThresholdMet(_ context.Context, _ *pluginapi.Ge
 	}, nil
 }
 
+// GetTopEvictionPods returns the reclaimed pods of the over-threshold group
+// sorted by actual CPU usage descending, filtered by the pod usage threshold
+// and the pod suppression tolerance rate.
 func (p *CPUPressureSuppression) GetTopEvictionPods(_ context.Context, request *pluginapi.GetTopEvictionPodsRequest) (*pluginapi.GetTopEvictionPodsResponse, error) {
 	if request == nil {
 		return nil, fmt.Errorf("GetTopEvictionPods got nil request")
@@ -273,6 +292,8 @@ func (p *CPUPressureSuppression) GetTopEvictionPods(_ context.Context, request *
 	}, nil
 }
 
+// GetEvictPods evicts reclaimed pods of the reclaim pool based on the
+// suppression rate and the reclaimed cores supply.
 func (p *CPUPressureSuppression) GetEvictPods(_ context.Context, request *pluginapi.GetEvictPodsRequest) (*pluginapi.GetEvictPodsResponse, error) {
 	if request == nil {
 		return nil, fmt.Errorf("GetEvictPods got nil request")
@@ -336,6 +357,8 @@ func (p *CPUPressureSuppression) GetEvictPods(_ context.Context, request *plugin
 	return &pluginapi.GetEvictPodsResponse{EvictPods: evictPods}, nil
 }
 
+// evictNonActualNUMABindingPods selects reclaimed pods that are not bound to
+// actual NUMA nodes for eviction.
 func (p *CPUPressureSuppression) evictNonActualNUMABindingPods(now time.Time, filteredPods []*v1.Pod, poolCPUSet machine.CPUSet,
 	evictionConfiguration *eviction.CPUPressureEvictionConfiguration,
 ) ([]*v1alpha1.EvictPod, error) {
@@ -365,6 +388,8 @@ func (p *CPUPressureSuppression) evictNonActualNUMABindingPods(now time.Time, fi
 	return p.evictPodsByReclaimMetrics(now, filterPods, reclaimMetrics, evictionConfiguration)
 }
 
+// evictActualNUMABindingPods selects reclaimed pods bound to each actual NUMA
+// node for eviction.
 func (p *CPUPressureSuppression) evictActualNUMABindingPods(now time.Time, filteredPods []*v1.Pod, poolCPUSet machine.CPUSet,
 	evictionConfiguration *eviction.CPUPressureEvictionConfiguration,
 ) ([]*v1alpha1.EvictPod, error) {
@@ -405,6 +430,8 @@ func (p *CPUPressureSuppression) evictActualNUMABindingPods(now time.Time, filte
 	return evictPods, nil
 }
 
+// evictPodsByReclaimMetrics evicts reclaimed pods whose suppression tolerance
+// rate is below the current pool suppression rate.
 func (p *CPUPressureSuppression) evictPodsByReclaimMetrics(now time.Time, filteredPods []*v1.Pod,
 	reclaimMetrics *helper.ReclaimMetrics, evictionConfiguration *eviction.CPUPressureEvictionConfiguration,
 ) ([]*v1alpha1.EvictPod, error) {
@@ -475,7 +502,21 @@ func (p *CPUPressureSuppression) sync(ctx context.Context) {
 	config := p.suppressionUsageCPUPressureEvictionConfig
 	if config == nil || !config.EnableSuppressionUsageEviction {
 		general.Infof("%s plugin is disabled", EvictionNameSuppression)
+		// clear stale over stats so that ThresholdMet and GetTopEvictionPods
+		// cannot keep evicting pods based on outdated data
+		p.suppressionOverStats = nil
 		return
+	}
+	if config.MetricRingSize <= 0 {
+		general.Errorf("invalid metric ring size %d", config.MetricRingSize)
+		p.suppressionOverStats = nil
+		return
+	}
+	// rebuild the metric history when the ring size changes via the dynamic
+	// config, so that the denominator used by updateSuppressionOverStats
+	// always matches the ring capacity
+	if p.metricsHistory == nil || p.metricsHistory.RingSize != config.MetricRingSize {
+		p.metricsHistory = cpuutil.NewMetricHistory(config.MetricRingSize)
 	}
 
 	// only reclaim pool supports suppression usage eviction
@@ -483,16 +524,19 @@ func (p *CPUPressureSuppression) sync(ctx context.Context) {
 	poolCPUSet, err := entries.GetCPUSetForPool(commonstate.PoolNameReclaim)
 	if err != nil {
 		general.Errorf("get reclaim pool failed: %s", err)
+		p.suppressionOverStats = nil
 		return
 	}
 	if poolCPUSet.Size() == 0 {
 		general.Errorf("reclaim pool set size is empty")
+		p.suppressionOverStats = nil
 		return
 	}
 
 	pods, err := p.metaServer.GetPodList(ctx, func(_ *v1.Pod) bool { return true })
 	if err != nil {
 		general.Errorf("get pod list failed: %s", err)
+		p.suppressionOverStats = nil
 		return
 	}
 	reclaimPods := native.FilterPods(pods, p.conf.CheckReclaimedQoSForPod)
@@ -627,6 +671,9 @@ func (p *CPUPressureSuppression) updateSuppressionOverStats() {
 	p.suppressionOverStats = overStats
 }
 
+// getSuppressionUsageCPUPressureEvictionConfig extracts the suppression usage
+// cpu pressure eviction config from the dynamic configuration, or returns an
+// empty config when the dynamic configuration is unavailable.
 func getSuppressionUsageCPUPressureEvictionConfig(conf *dynamic.Configuration) *SuppressionUsageCPUPressureEvictionConfig {
 	if conf == nil || conf.AdminQoSConfiguration == nil || conf.EvictionConfiguration == nil ||
 		conf.CPUPressureEvictionConfiguration == nil {
@@ -636,15 +683,15 @@ func getSuppressionUsageCPUPressureEvictionConfig(conf *dynamic.Configuration) *
 	config := conf.CPUPressureEvictionConfiguration.SuppressionUsageCPUPressureEvictionConfiguration
 	return &SuppressionUsageCPUPressureEvictionConfig{
 		EnableSuppressionUsageEviction: config.EnableSuppressionUsageEviction,
-		SyncPeriod:                        config.SyncPeriod,
-		MetricRingSize:                    config.MetricRingSize,
-		ThresholdMetPercentage:            config.ThresholdMetPercentage,
-		SoftSuppressionRateThreshold:      config.SoftSuppressionRateThreshold,
-		SoftCPUUsageThreshold:             config.SoftCPUUsageThreshold,
-		HardSuppressionRateThreshold:      config.HardSuppressionRateThreshold,
-		HardCPUUsageThreshold:             config.HardCPUUsageThreshold,
-		PodCPUUsageEvictionThreshold:      config.PodCPUUsageEvictionThreshold,
-		GracePeriod:                       config.GracePeriod,
+		SyncPeriod:                     config.SyncPeriod,
+		MetricRingSize:                 config.MetricRingSize,
+		ThresholdMetPercentage:         config.ThresholdMetPercentage,
+		SoftSuppressionRateThreshold:   config.SoftSuppressionRateThreshold,
+		SoftCPUUsageThreshold:          config.SoftCPUUsageThreshold,
+		HardSuppressionRateThreshold:   config.HardSuppressionRateThreshold,
+		HardCPUUsageThreshold:          config.HardCPUUsageThreshold,
+		PodCPUUsageEvictionThreshold:   config.PodCPUUsageEvictionThreshold,
+		GracePeriod:                    config.GracePeriod,
 	}
 }
 
@@ -655,5 +702,7 @@ func computePoolSuppressionRate(totalCPURequest resource.Quantity, reclaimedCore
 	if reclaimedCoresSupply == 0 {
 		return math.MaxFloat64
 	}
-	return float64(totalCPURequest.Value()) / reclaimedCoresSupply
+	// use MilliValue to preserve fractional CPU requests (e.g. 1.5 cores)
+	// instead of Value() which rounds up to whole cores
+	return float64(totalCPURequest.MilliValue()) / 1000.0 / reclaimedCoresSupply
 }

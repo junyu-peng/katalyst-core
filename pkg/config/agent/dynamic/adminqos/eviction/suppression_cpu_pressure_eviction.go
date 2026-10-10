@@ -20,23 +20,28 @@ import (
 	"github.com/kubewharf/katalyst-core/pkg/config/agent/dynamic/crd"
 )
 
+// SuppressionUsageCPUPressureEvictionConfiguration holds the config of the
+// suppression usage cpu pressure eviction channel.
 type SuppressionUsageCPUPressureEvictionConfiguration struct {
 	EnableSuppressionUsageEviction bool
-	SyncPeriod                        int64
-	MetricRingSize                    int
-	ThresholdMetPercentage            float64
-	SoftSuppressionRateThreshold      float64
-	SoftCPUUsageThreshold             float64
-	HardSuppressionRateThreshold      float64
-	HardCPUUsageThreshold             float64
-	PodCPUUsageEvictionThreshold      float64
-	GracePeriod                       int64
+	SyncPeriod                     int64
+	MetricRingSize                 int
+	ThresholdMetPercentage         float64
+	SoftSuppressionRateThreshold   float64
+	SoftCPUUsageThreshold          float64
+	HardSuppressionRateThreshold   float64
+	HardCPUUsageThreshold          float64
+	PodCPUUsageEvictionThreshold   float64
+	GracePeriod                    int64
 }
 
+// NewSuppressionUsageCPUPressureEvictionConfiguration creates a
+// SuppressionUsageCPUPressureEvictionConfiguration with zero values.
 func NewSuppressionUsageCPUPressureEvictionConfiguration() SuppressionUsageCPUPressureEvictionConfiguration {
 	return SuppressionUsageCPUPressureEvictionConfiguration{}
 }
 
+// ApplyConfiguration applies the dynamic CRD config to the current config.
 func (s *SuppressionUsageCPUPressureEvictionConfiguration) ApplyConfiguration(conf *crd.DynamicConfigCRD) {
 	if aqc := conf.AdminQoSConfiguration; aqc != nil && aqc.Spec.Config.EvictionConfig != nil &&
 		aqc.Spec.Config.EvictionConfig.CPUPressureEvictionConfig != nil {

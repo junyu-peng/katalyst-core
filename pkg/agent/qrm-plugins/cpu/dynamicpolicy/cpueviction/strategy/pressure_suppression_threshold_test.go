@@ -47,10 +47,10 @@ import (
 const (
 	testSuppressionUsageRingSize   = 3
 	testSuppressionUsagePercentage = 0.5
-	testSuppressionSoftRate           = 5
-	testSuppressionSoftUsage          = 0.8
-	testSuppressionHardRate           = 10
-	testSuppressionHardUsage          = 0.01
+	testSuppressionSoftRate        = 5
+	testSuppressionSoftUsage       = 0.8
+	testSuppressionHardRate        = 10
+	testSuppressionHardUsage       = 0.01
 )
 
 // reclaimPoolCPUSet is the cpuset of the reclaim pool in the tests, 10 cpus in total.
@@ -267,11 +267,11 @@ func TestCPUPressureSuppression_ThresholdMet_SoftAndHard(t *testing.T) {
 	pod2Entry := makeSuppressionReclaimAllocation(string(uuid.NewUUID()), "pod-2", 4, "1.2")
 
 	tests := []struct {
-		name            string
-		cgroupUsage     float64
-		cfsQuota        float64
-		wantMetType     evictionpluginapi.ThresholdMetType
-		wantThreshold   float64
+		name          string
+		cgroupUsage   float64
+		cfsQuota      float64
+		wantMetType   evictionpluginapi.ThresholdMetType
+		wantThreshold float64
 	}{
 		{
 			name:          "soft met",

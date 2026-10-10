@@ -39,36 +39,36 @@ const (
 
 // CPUPressureEvictionOptions is the options of cpu pressure eviction
 type CPUPressureEvictionOptions struct {
-	EnableLoadEviction                      bool
-	LoadUpperBoundRatio                     float64
-	LoadLowerBoundRatio                     float64
-	LoadThresholdMetPercentage              float64
-	LoadMetricRingSize                      int
-	LoadEvictionCoolDownTime                time.Duration
-	EnableSuppressionEviction               bool
-	MaxSuppressionToleranceRate             float64
-	MinSuppressionToleranceDuration         time.Duration
-	GracePeriod                             int64
-	NumaCPUPressureEvictionOptions          NumaCPUPressureEvictionOptions
-	NumaSysCPUPressureEvictionOptions       NumaSysCPUPressureEvictionOptions
-	SuppressionUsageCPUPressureEvictionOptions   SuppressionUsageCPUPressureEvictionOptions
+	EnableLoadEviction                         bool
+	LoadUpperBoundRatio                        float64
+	LoadLowerBoundRatio                        float64
+	LoadThresholdMetPercentage                 float64
+	LoadMetricRingSize                         int
+	LoadEvictionCoolDownTime                   time.Duration
+	EnableSuppressionEviction                  bool
+	MaxSuppressionToleranceRate                float64
+	MinSuppressionToleranceDuration            time.Duration
+	GracePeriod                                int64
+	NumaCPUPressureEvictionOptions             NumaCPUPressureEvictionOptions
+	NumaSysCPUPressureEvictionOptions          NumaSysCPUPressureEvictionOptions
+	SuppressionUsageCPUPressureEvictionOptions SuppressionUsageCPUPressureEvictionOptions
 }
 
 // NewCPUPressureEvictionOptions returns a new CPUPressureEvictionOptions
 func NewCPUPressureEvictionOptions() *CPUPressureEvictionOptions {
 	return &CPUPressureEvictionOptions{
-		EnableLoadEviction:                defaultEnableLoadEviction,
-		LoadUpperBoundRatio:               defaultLoadUpperBoundRatio,
-		LoadLowerBoundRatio:               defaultLoadLowerBoundRatio,
-		LoadThresholdMetPercentage:        defaultLoadThresholdMetPercentage,
-		LoadMetricRingSize:                defaultLoadMetricSize,
-		LoadEvictionCoolDownTime:          defaultLoadEvictionCoolDownTime,
-		EnableSuppressionEviction:         defaultEnableSuppressionEviction,
-		MaxSuppressionToleranceRate:       defaultMaxSuppressionToleranceRate,
-		MinSuppressionToleranceDuration:   defaultMinSuppressionToleranceDuration,
-		GracePeriod:                       defaultGracePeriod,
-		NumaCPUPressureEvictionOptions:    NewNumaCPUPressureEvictionOptions(),
-		NumaSysCPUPressureEvictionOptions: NewNumaSysCPUPressureEvictionOptions(),
+		EnableLoadEviction:                         defaultEnableLoadEviction,
+		LoadUpperBoundRatio:                        defaultLoadUpperBoundRatio,
+		LoadLowerBoundRatio:                        defaultLoadLowerBoundRatio,
+		LoadThresholdMetPercentage:                 defaultLoadThresholdMetPercentage,
+		LoadMetricRingSize:                         defaultLoadMetricSize,
+		LoadEvictionCoolDownTime:                   defaultLoadEvictionCoolDownTime,
+		EnableSuppressionEviction:                  defaultEnableSuppressionEviction,
+		MaxSuppressionToleranceRate:                defaultMaxSuppressionToleranceRate,
+		MinSuppressionToleranceDuration:            defaultMinSuppressionToleranceDuration,
+		GracePeriod:                                defaultGracePeriod,
+		NumaCPUPressureEvictionOptions:             NewNumaCPUPressureEvictionOptions(),
+		NumaSysCPUPressureEvictionOptions:          NewNumaSysCPUPressureEvictionOptions(),
 		SuppressionUsageCPUPressureEvictionOptions: NewSuppressionUsageCPUPressureEvictionOptions(),
 	}
 }

@@ -17,52 +17,59 @@ limitations under the License.
 package eviction
 
 import (
+	"fmt"
+
 	cliflag "k8s.io/component-base/cli/flag"
 
 	"github.com/kubewharf/katalyst-core/pkg/config/agent/dynamic/adminqos/eviction"
 )
 
 const (
-	defaultEnableSuppressionUsageEviction = false
-	defaultSuppressionUsageSyncPeriod     = 15
-	defaultSuppressionUsageMetricRingSize = 10
+	defaultEnableSuppressionUsageEviction         = false
+	defaultSuppressionUsageSyncPeriod             = 15
+	defaultSuppressionUsageMetricRingSize         = 10
 	defaultSuppressionUsageThresholdMetPercentage = 0.8
-	defaultSoftSuppressionRateThreshold             = 5
-	defaultSoftCPUUsageThreshold                    = 0.8
-	defaultHardSuppressionRateThreshold             = 10
-	defaultHardCPUUsageThreshold                    = 0.01
-	defaultPodCPUUsageEvictionThreshold             = 0
-	defaultSuppressionUsageGracePeriod           = -1
+	defaultSoftSuppressionRateThreshold           = 5
+	defaultSoftCPUUsageThreshold                  = 0.8
+	defaultHardSuppressionRateThreshold           = 10
+	defaultHardCPUUsageThreshold                  = 0.01
+	defaultPodCPUUsageEvictionThreshold           = 0
+	defaultSuppressionUsageGracePeriod            = -1
 )
 
+// SuppressionUsageCPUPressureEvictionOptions holds the command-line options
+// of the suppression usage cpu pressure eviction channel.
 type SuppressionUsageCPUPressureEvictionOptions struct {
 	EnableSuppressionUsageEviction bool
-	SyncPeriod                        int64
-	MetricRingSize                    int
-	ThresholdMetPercentage            float64
-	SoftSuppressionRateThreshold      float64
-	SoftCPUUsageThreshold             float64
-	HardSuppressionRateThreshold      float64
-	HardCPUUsageThreshold             float64
-	PodCPUUsageEvictionThreshold      float64
-	GracePeriod                       int64
+	SyncPeriod                     int64
+	MetricRingSize                 int
+	ThresholdMetPercentage         float64
+	SoftSuppressionRateThreshold   float64
+	SoftCPUUsageThreshold          float64
+	HardSuppressionRateThreshold   float64
+	HardCPUUsageThreshold          float64
+	PodCPUUsageEvictionThreshold   float64
+	GracePeriod                    int64
 }
 
+// NewSuppressionUsageCPUPressureEvictionOptions creates
+// SuppressionUsageCPUPressureEvictionOptions with default values.
 func NewSuppressionUsageCPUPressureEvictionOptions() SuppressionUsageCPUPressureEvictionOptions {
 	return SuppressionUsageCPUPressureEvictionOptions{
 		EnableSuppressionUsageEviction: defaultEnableSuppressionUsageEviction,
-		SyncPeriod:                        defaultSuppressionUsageSyncPeriod,
-		MetricRingSize:                    defaultSuppressionUsageMetricRingSize,
-		ThresholdMetPercentage:            defaultSuppressionUsageThresholdMetPercentage,
-		SoftSuppressionRateThreshold:      defaultSoftSuppressionRateThreshold,
-		SoftCPUUsageThreshold:             defaultSoftCPUUsageThreshold,
-		HardSuppressionRateThreshold:      defaultHardSuppressionRateThreshold,
-		HardCPUUsageThreshold:             defaultHardCPUUsageThreshold,
-		PodCPUUsageEvictionThreshold:      defaultPodCPUUsageEvictionThreshold,
-		GracePeriod:                       defaultSuppressionUsageGracePeriod,
+		SyncPeriod:                     defaultSuppressionUsageSyncPeriod,
+		MetricRingSize:                 defaultSuppressionUsageMetricRingSize,
+		ThresholdMetPercentage:         defaultSuppressionUsageThresholdMetPercentage,
+		SoftSuppressionRateThreshold:   defaultSoftSuppressionRateThreshold,
+		SoftCPUUsageThreshold:          defaultSoftCPUUsageThreshold,
+		HardSuppressionRateThreshold:   defaultHardSuppressionRateThreshold,
+		HardCPUUsageThreshold:          defaultHardCPUUsageThreshold,
+		PodCPUUsageEvictionThreshold:   defaultPodCPUUsageEvictionThreshold,
+		GracePeriod:                    defaultSuppressionUsageGracePeriod,
 	}
 }
 
+// AddFlags adds the suppression usage cpu pressure eviction flags.
 func (o *SuppressionUsageCPUPressureEvictionOptions) AddFlags(fss *cliflag.NamedFlagSets) {
 	fs := fss.FlagSet("suppression-usage-cpu-pressure-eviction")
 
@@ -88,7 +95,13 @@ func (o *SuppressionUsageCPUPressureEvictionOptions) AddFlags(fss *cliflag.Named
 		"The grace period (in seconds) after a pod starts before it can be considered for eviction due to suppression usage")
 }
 
+// ApplyTo applies the options to the config, validating the numeric fields
+// that the strategy relies on.
 func (o *SuppressionUsageCPUPressureEvictionOptions) ApplyTo(c *eviction.SuppressionUsageCPUPressureEvictionConfiguration) error {
+	if o.SyncPeriod <= 0 || o.MetricRingSize <= 0 || o.ThresholdMetPercentage <= 0 || o.ThresholdMetPercentage > 1 {
+		return fmt.Errorf("invalid suppression usage cpu pressure eviction options: syncPeriod=%d metricRingSize=%d thresholdMetPercentage=%v",
+			o.SyncPeriod, o.MetricRingSize, o.ThresholdMetPercentage)
+	}
 	c.EnableSuppressionUsageEviction = o.EnableSuppressionUsageEviction
 	c.SyncPeriod = o.SyncPeriod
 	c.MetricRingSize = o.MetricRingSize
